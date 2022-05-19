@@ -1,9 +1,9 @@
 use chrono::prelude::*;
 
 pub struct Patient {
-    name: String,
-    is_male: bool,
-    birthday: DateTime<Utc>,
-    address: String,
-    past_history: String,
+    pub name: String,
+    pub is_male: bool,
+    pub birthday: Date<Utc>,
+    pub address: Option<String>,
+    pub past_history: Option<String>,
 }

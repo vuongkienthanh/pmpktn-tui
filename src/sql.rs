@@ -1,8 +1,10 @@
-use crate::MyResult;
 use crate::app::Patient;
+use futures::stream::Stream;
+use crate::MyResult;
 use home;
 use sqlx::sqlite::SqliteConnectOptions;
 use sqlx::{sqlite::SqliteConnection, sqlite::SqliteQueryResult, ConnectOptions};
+use std::pin::Pin;
 use std::str::FromStr;
 use tokio;
 
@@ -67,7 +69,7 @@ CREATE TABLE linedrugs (
 );
 ";
 
-fn create_dir() -> Result<PathBuf, std::io::Error> {
+pub fn create_dir() -> Result<PathBuf, std::io::Error> {
     let mut dir = home::home_dir().unwrap();
     dir.push(".pmpktn-tui");
     if !dir.exists() {
@@ -105,9 +107,28 @@ pub async fn initdb() -> Result<SqliteQueryResult, sqlx::Error> {
     }
 }
 
-
-
 #[tokio::main]
-pub async fn insert_patient(patient: Patient) ->Result<SqliteQueryResult, sqlx::Error> {
-    todo!("asdf")
+pub async fn insert_patient(
+    conn: &mut SqliteConnection,
+    patient: Patient,
+) -> Result<SqliteQueryResult, sqlx::Error> {
+    let query =
+        "INSERT INTO patients (name, is_male, birthday, address, past_history) VALUES (?,?,?,?,?)";
+    sqlx::query(query)
+        .bind(patient.name)
+        .bind(patient.is_male)
+        .bind(patient.birthday.format("%Y-%m-%d %H:%M").to_string())
+        .bind(patient.address.unwrap_or("NULL".to_string()))
+        .bind(patient.past_history.unwrap_or("NULL".to_string()))
+        .execute(conn)
+        .await
+}
+
+pub async fn select_patient<'a>(
+    conn: &'a mut SqliteConnection,
+    patient_name: &'a str,
+) -> Pin<Box<dyn Stream<Item = Result<sqlx::sqlite::SqliteRow, sqlx::Error>> + Send +'a >> {
+    let query = "SELECT name, is_male, birthday FROM patients\
+                 WHERE patients.name = ?";
+    sqlx::query(query).bind(patient_name).fetch(conn)
 }
