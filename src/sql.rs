@@ -1,10 +1,8 @@
 use crate::app::Patient;
-use futures::stream::Stream;
 use crate::MyResult;
 use home;
 use sqlx::sqlite::SqliteConnectOptions;
 use sqlx::{sqlite::SqliteConnection, sqlite::SqliteQueryResult, ConnectOptions};
-use std::pin::Pin;
 use std::str::FromStr;
 use tokio;
 
@@ -107,19 +105,26 @@ pub async fn initdb() -> Result<SqliteQueryResult, sqlx::Error> {
     }
 }
 
-#[tokio::main]
 pub async fn insert_patient(
     conn: &mut SqliteConnection,
     patient: Patient,
 ) -> Result<SqliteQueryResult, sqlx::Error> {
     let query =
         "INSERT INTO patients (name, is_male, birthday, address, past_history) VALUES (?,?,?,?,?)";
+    // sqlx::query(query)
+    //     .bind(&patient.name)
+    //     .bind(&patient.is_male)
+    //     .bind(&patient.birthday.format("%Y-%m-%d %H:%M").to_string())
+    //     .bind(&patient.address.unwrap_or("NULL".to_string()))
+    //     .bind(&patient.past_history.unwrap_or("NULL".to_string()))
+    //     .execute(conn)
+    //     .await
     sqlx::query(query)
-        .bind(patient.name)
-        .bind(patient.is_male)
-        .bind(patient.birthday.format("%Y-%m-%d %H:%M").to_string())
-        .bind(patient.address.unwrap_or("NULL".to_string()))
-        .bind(patient.past_history.unwrap_or("NULL".to_string()))
+        .bind("vuong")
+        .bind(true)
+        .bind("2011-01-01")
+        .bind("NULL")
+        .bind("NULL")
         .execute(conn)
         .await
 }
@@ -127,8 +132,8 @@ pub async fn insert_patient(
 pub async fn select_patient<'a>(
     conn: &'a mut SqliteConnection,
     patient_name: &'a str,
-) -> Pin<Box<dyn Stream<Item = Result<sqlx::sqlite::SqliteRow, sqlx::Error>> + Send +'a >> {
+) -> Result<Vec<sqlx::sqlite::SqliteRow>, sqlx::Error> {
     let query = "SELECT name, is_male, birthday FROM patients\
                  WHERE patients.name = ?";
-    sqlx::query(query).bind(patient_name).fetch(conn)
+    sqlx::query(query).bind(patient_name).fetch_all(conn).await
 }
